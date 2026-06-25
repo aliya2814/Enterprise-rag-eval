@@ -1,9 +1,9 @@
-# Build log — enterprise-rag-eval
+# Build log - Enterprise-rag-eval
 
 A short daily log. Commit one entry per working session — it gives recruiters a
 visible, honest story of how the project was built (and helps you resume fast).
 
-## Day 1 — scaffold
+## Day 1 - Scaffold
 - Set up repo structure: `src/`, `eval/`, `notebooks/`, `tests/`, app + api + Docker.
 - Implemented: config, pluggable LLM (ollama/groq/gemini), EDGAR downloader,
   ingestion (load→chunk→embed→Chroma), hybrid retriever (dense + BM25 + RRF) with
@@ -12,7 +12,7 @@ visible, honest story of how the project was built (and helps you resume fast).
 - TODO next session: install deps, download 2–3 real filings, run first ingest +
   baseline eval, record numbers in `eval/EVALUATION_REPORT.md`.
 
-## Day 2 — first working answer
+## Day 2 - First working answer
 - Installed lite dependencies in a venv; configured Groq (free) as the LLM backend.
 - Downloaded real Apple & Microsoft 10-K filings from public SEC EDGAR.
 - Ingested filings into Chroma (switched vector store to cosine similarity).
@@ -23,7 +23,7 @@ visible, honest story of how the project was built (and helps you resume fast).
   cross-encoder reranker (next) is what filters these out.
 - TODO: run the Streamlit app, then install full requirements + turn reranker on.
 
-## Day 3 — reranker, evaluation, and honest error analysis
+## Day 3 - reranker, evaluation, and honest error analysis
 - Added a cross-encoder reranker (bge-reranker-base via sentence-transformers, after
   hitting a FlagEmbedding/tokenizer bug and switching libraries).
 - Replaced fragile RAGAS with a self-contained LLM-as-judge (free Groq 70B as judge),
