@@ -1,0 +1,30 @@
+# Core RAG
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-text-splitters>=0.2.0
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+rank-bm25>=0.2.2
+FlagEmbedding>=1.2.0          # bge-reranker
+pypdf>=4.0.0
+beautifulsoup4>=4.12.0        # parse the 10-K HTML filings
+lxml>=5.0.0
+
+# LLM backends (pick one at runtime; all have a free path)
+ollama>=0.3.0                 # local, free
+groq>=0.9.0                   # free tier
+google-generativeai>=0.7.0   # Gemini free tier
+
+# Evaluation
+ragas>=0.1.0
+datasets>=2.19.0
+
+# App / API
+streamlit>=1.36.0
+fastapi>=0.111.0
+uvicorn>=0.30.0
+
+# Utils / tests
+python-dotenv>=1.0.0
+requests>=2.31.0
+pytest>=8.0.0

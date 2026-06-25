@@ -1,0 +1,8 @@
+{
+  "lightweight": {
+    "n": 8,
+    "hit_rate@k": 0.875,
+    "mrr": 0.812
+  },
+  "ragas": null
+}
