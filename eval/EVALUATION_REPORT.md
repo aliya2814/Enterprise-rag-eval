@@ -7,7 +7,7 @@ All metrics use only free models and are reproducible with:
 - Corpus: SEC 10-K filings for **AAPL** and **MSFT** (latest annual reports).
 - Embeddings: `BAAI/bge-small-en-v1.5`  ·  Reranker: `BAAI/bge-reranker-base` (cross-encoder via sentence-transformers).
 - Generator LLM: **Groq `llama-3.1-8b-instant`** (free tier).
-- Judge LLM (LLM-as-judge evaluation): **Groq `llama-3.3-70b-versatile`** (free tier) — deliberately larger than the generator so the judge is reliable.
+- Judge LLM (LLM-as-judge evaluation): **Groq `llama-3.3-70b-versatile`** (free tier) - deliberately larger than the generator so the judge is reliable.
 - Golden set: 8 question/answer pairs (`eval/golden_set.jsonl`).
 
 ## Headline answer-quality (hybrid retrieval + reranker)
