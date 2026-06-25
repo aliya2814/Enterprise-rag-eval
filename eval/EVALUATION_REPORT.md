@@ -45,7 +45,3 @@ This proxy only checks whether a chunk from the *expected company* is retrieved.
 2. **Retrieval recall is the main limitation.** Questions 2 (revenue concentration) and 6 (supplier dependence) abstained because `bge-small` did not surface content that very likely exists in the filings under different wording. This is a retrieval-recall gap, not a generation failure.
 3. **Metric design matters.** The company-match proxy is poorly suited to judging a reranker; LLM-as-judge faithfulness/context relevance is the better signal.
 
-## Next steps
-- Stronger embedding model (`bge-base`/`bge-large`) and query rewriting/expansion to lift retrieval recall on the 2 missed questions.
-- Expand the golden set from 8 to 25–30 questions for tighter estimates.
-- Add a hosted demo (Hugging Face Spaces).
