@@ -1,74 +1,111 @@
-# enterprise-rag-eval — Grounded Document Q&A with Retrieval Evaluation & Guardrails
+# Enterprise RAG + Evaluation
 
-A production-style Retrieval-Augmented Generation (RAG) system over real **SEC 10-K filings**, built to demonstrate not just a working chatbot but a **measurable, evaluated, guarded** retrieval pipeline.
+Ask plain-English questions about real company annual reports (SEC 10-K filings) and get answers that are grounded in the source text, with citations to the exact section used. Built to show a retrieval pipeline that is measured and guarded, not just a chatbot wrapper.
 
-> The RAG pipeline itself is commodity in 2026. What this project shows is the part hiring teams actually care about: a **hybrid retriever + reranker**, a **RAGAS evaluation harness** with a golden Q&A set, **guardrails** against hallucination/prompt-injection, and a **deployed live demo**.
+**Status:** core pipeline working and evaluated (hit-rate 0.88, MRR 0.81 on a held-out question set). Reranker ablation, RAGAS answer-quality scoring, and a hosted live demo are in progress (see Roadmap).
 
----
+## What it does
 
-## Why this dataset
-Public SEC 10-K annual reports are: (1) **real** business documents (not Titanic/Iris), (2) **freely available** via the public EDGAR system with no API key, (3) long, structured, and citation-heavy — exactly the kind of corpus where retrieval quality and faithfulness actually matter. The same pipeline works on any folder of PDFs/text (policies, manuals, contracts), so it generalizes to enterprise use.
+Example, straight from the running app:
+
+> **Q:** What are Apple's main business risk factors?
+>
+> **A:** New business strategies and ventures are inherently risky and may not succeed `[AAPL_10K:210]`. Tariffs and retaliatory trade measures may materially affect operations `[AAPL_10K:105, 116]`. Supply shortages and price increases can result from these measures `[AAPL_10K:155]`.
+
+Every claim points back to the chunk it came from. If the documents do not contain the answer, the system says so instead of inventing one (for example, it refuses "what is the recipe for pizza?").
+
+## Why SEC filings as the dataset
+
+I deliberately avoided toy datasets like Titanic or Iris. SEC 10-K reports are real, public business documents available with no API key, and they are long and citation-heavy, which is exactly where retrieval quality and faithfulness actually matter. The pipeline is corpus-agnostic, so the same code works on policies, contracts, or product manuals.
+
+## Key features
+
+- **Hybrid retrieval:** combines dense semantic search (embeddings) with BM25 keyword search, merged using Reciprocal Rank Fusion.
+- **Calibrated relevance scoring:** results are scored by cosine similarity so a single threshold can decide when context is too weak to answer.
+- **Guardrails:** refuses on weak retrieval, blocks basic prompt-injection patterns, and the generation prompt forbids using outside knowledge.
+- **Evaluation harness:** scores retrieval against a golden question set (hit-rate, MRR), with optional RAGAS metrics for answer faithfulness.
+- **Two interfaces:** a Streamlit app that shows the retrieved evidence behind each answer, and a FastAPI endpoint for programmatic use.
+- **Reproducible:** pinned requirements, Dockerfile, and unit tests for the guardrail logic.
 
 ## Architecture
+
 ```
-PDFs/HTML ─► ingest (load ► chunk ► embed) ─► vector store (Chroma)
-                                                     │
-question ─► hybrid retrieve (BM25 + dense) ─► rerank (bge-reranker) ─► top-k
-                                                     │
-                              guardrails ◄─ generate (LLM + citations) ─► answer + sources
-                                                     │
-                                   eval harness (RAGAS): faithfulness, context P/R, answer relevancy
+documents (HTML/PDF)
+      |
+   ingest:  load -> clean -> chunk -> embed -> Chroma (cosine)
+      |
+question --> hybrid retrieve (dense + BM25, RRF) --> optional rerank --> top-k
+      |
+   guardrails --> LLM generate (answer + citations) --> response
+      |
+   evaluation harness: hit-rate, MRR, (RAGAS: faithfulness, context precision/recall)
 ```
 
-## Tech stack
-Python · LangChain · ChromaDB · sentence-transformers (`bge-small-en`) · `bge-reranker-base` · `rank_bm25` · RAGAS · FastAPI · Streamlit · Docker · pytest. LLM is pluggable: **Ollama** (local, free), **Groq** (free tier), or **Gemini** (free tier).
+## Results
 
-## Results (fill in after you run the eval)
-| Config | Faithfulness | Context Precision | Context Recall | Answer Relevancy |
-|--------|-------------|-------------------|----------------|------------------|
-| Hybrid, reranker off | hit_rate@k **0.875** · MRR **0.812** | (run RAGAS next) | — | — |
-| + Hybrid + Reranker    | _ | _ | _ | _ |
+Measured on an 8-question golden set (`eval/golden_set.jsonl`). Numbers are reproducible with `python eval/run_eval.py`.
+
+| Configuration | hit-rate@k | MRR | Faithfulness |
+|---|---|---|---|
+| Hybrid retrieval (reranker off) | 0.875 | 0.812 | pending |
+| Hybrid + cross-encoder reranker | in progress | in progress | in progress |
+
+## Engineering notes
+
+A few decisions and one real bug worth calling out, since they shaped the design:
+
+- **Scoring bug I hit and fixed.** My weak-context guardrail was rejecting every answer. The cause: with the reranker disabled, final results carried tiny Rank-Fusion scores (around 0.02) instead of a meaningful relevance value, so they always fell below the refusal threshold. Fix: store the dense cosine similarity per chunk and report that as the relevance score. After the fix, relevant chunks score 0.7 to 0.8 and the guardrail behaves correctly.
+- **Cosine over L2.** The vector store uses cosine distance so a single similarity threshold is interpretable across queries.
+- **Two layers of safety.** Retrieval-level (refuse on weak context) and generation-level (the prompt forbids answering from outside the provided context). The pizza refusal passes the retrieval layer but is correctly stopped at the generation layer.
 
 ## Quickstart
-```bash
-pip install -r requirements.txt
 
-# 1. Download a few real 10-K filings (free, public EDGAR)
+```bash
+# 1. install (lite set for first run; full set adds reranker + RAGAS)
+pip install -r requirements-min.txt
+
+# 2. download a few real filings (free, public EDGAR)
+set EDGAR_UA=Your Name your@email.com
 python src/download_filings.py --tickers AAPL MSFT --out data/raw
 
-# 2. Ingest into the vector store
+# 3. ingest into the vector store
 python -m src.ingest --input data/raw --persist data/processed
 
-# 3. Ask a question from the CLI
+# 4. configure a free LLM backend (Groq shown)
+set LLM_BACKEND=groq
+set GROQ_API_KEY=your_key
+set USE_RERANKER=false
+
+# 5. ask a question, run the eval, or launch the app
 python -m src.generate --q "What are Apple's main business risk factors?"
-
-# 4. Run the evaluation harness
 python eval/run_eval.py
-
-# 5. Launch the UI / API
 streamlit run app.py
-uvicorn api:app --reload
 ```
+
+LLM backend is pluggable and every option has a free path: Ollama (local, offline), Groq (free tier), or Gemini (free tier).
+
+## Tech stack
+
+Python, LangChain, ChromaDB, sentence-transformers (bge-small-en), rank-bm25, bge-reranker, RAGAS, FastAPI, Streamlit, Docker, pytest.
 
 ## Repo layout
+
 ```
-src/        ingest, retriever (hybrid+rerank), generate, guardrails, llm, config, download_filings
-eval/       golden_set.jsonl  +  run_eval.py  +  EVALUATION_REPORT.md
-notebooks/  01_ingestion.ipynb, 02_evaluation.ipynb
-app.py      Streamlit UI (shows retrieved chunks + citations)
-api.py      FastAPI endpoint
-tests/      pytest smoke + guardrail tests
-Dockerfile  container for reproducible runs
+src/    ingest, retriever (hybrid + rerank), generate, guardrails, llm, config, download_filings
+eval/   golden_set.jsonl, run_eval.py, EVALUATION_REPORT.md
+app.py  Streamlit UI (answer + retrieved evidence)
+api.py  FastAPI endpoint
+tests/  guardrail unit tests
 ```
 
-## Design decisions (write these as you go — this is what makes it senior)
-- **Chunking:** _why this size/overlap (back it with an eval number)._
-- **Hybrid vs dense:** _the measured delta._
-- **Reranker:** _latency vs precision trade-off._
-- **Guardrails:** _how "I don't know" is triggered when context is weak._
+## Roadmap
 
-## Limitations & next steps
-_Be honest here — stating what doesn't work yet reads as maturity._
+- [ ] Turn on the cross-encoder reranker and record the measured lift vs the baseline above
+- [ ] Add RAGAS faithfulness and context precision/recall to the results table
+- [ ] Run a chunk-size ablation (256 / 512 / 1024) and keep the best
+- [ ] Deploy a hosted demo (Hugging Face Spaces) and link it at the top
+- [ ] Short demo video
 
 ## License
+
 MIT
