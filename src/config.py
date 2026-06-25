@@ -27,6 +27,8 @@ class Settings:
     llm_backend: str = os.getenv("LLM_BACKEND", "ollama")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
     groq_model: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    # a STRONGER free model used only for LLM-as-judge evaluation
+    judge_model: str = os.getenv("JUDGE_MODEL", "llama-3.3-70b-versatile")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
     # Guardrail thresholds

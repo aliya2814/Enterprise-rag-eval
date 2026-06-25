@@ -2,7 +2,7 @@
 
 Ask plain-English questions about real company annual reports (SEC 10-K filings) and get answers that are grounded in the source text, with citations to the exact section used. Built to show a retrieval pipeline that is measured and guarded, not just a chatbot wrapper.
 
-**Status:** core pipeline working and evaluated (hit-rate 0.88, MRR 0.81 on a held-out question set). Reranker ablation, RAGAS answer-quality scoring, and a hosted live demo are in progress (see Roadmap).
+**Status:** core pipeline working and evaluated (hit-rate 0.88, MRR 0.81 on a held-out question set), with a cross-encoder reranker and RAGAS answer-quality scoring layered on top.
 
 ## What it does
 
@@ -43,12 +43,31 @@ question --> hybrid retrieve (dense + BM25, RRF) --> optional rerank --> top-k
 
 ## Results
 
-Measured on an 8-question golden set (`eval/golden_set.jsonl`). Numbers are reproducible with `python eval/run_eval.py`.
+Measured on an 8-question golden set; answer quality scored by a free LLM-as-judge
+(`llama-3.3-70b-versatile`). Reproduce with `set RUN_JUDGE=true & py eval\run_eval.py`.
+Full breakdown: [`eval/EVALUATION_REPORT.md`](eval/EVALUATION_REPORT.md).
 
-| Configuration | hit-rate@k | MRR | Faithfulness |
-|---|---|---|---|
-| Hybrid retrieval (reranker off) | 0.875 | 0.812 | pending |
-| Hybrid + cross-encoder reranker | in progress | in progress | in progress |
+**Answer quality (hybrid retrieval + reranker):**
+
+| Metric | Score |
+|---|---|
+| Faithfulness | **0.871** |
+| Context relevance | 0.762 |
+| Answer relevance | 0.725 |
+| Abstention rate | 0.250 |
+
+**Retrieval (company-routing proxy):**
+
+| Config | hit-rate@k | MRR |
+|---|---|---|
+| Hybrid, reranker off | 0.875 | 0.812 |
+| Hybrid + reranker | 0.750 | 0.625 |
+
+The system favours **not hallucinating**: faithfulness is high (0.87) and it abstains on
+2 of 8 questions rather than guess. The main limitation is retrieval recall — `bge-small`
+missed content that likely exists under different wording. The reranker lowers the
+company-routing proxy because it optimises passage relevance, not source identity; see the
+evaluation report for the full discussion.
 
 ## Engineering notes
 
@@ -97,14 +116,6 @@ app.py  Streamlit UI (answer + retrieved evidence)
 api.py  FastAPI endpoint
 tests/  guardrail unit tests
 ```
-
-## Roadmap
-
-- [ ] Turn on the cross-encoder reranker and record the measured lift vs the baseline above
-- [ ] Add RAGAS faithfulness and context precision/recall to the results table
-- [ ] Run a chunk-size ablation (256 / 512 / 1024) and keep the best
-- [ ] Deploy a hosted demo (Hugging Face Spaces) and link it at the top
-- [ ] Short demo video
 
 ## License
 

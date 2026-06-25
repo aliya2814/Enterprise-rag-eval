@@ -9,29 +9,30 @@ import os
 from .config import settings
 
 
-def complete(prompt: str, system: str | None = None, temperature: float = 0.0) -> str:
+def complete(prompt: str, system: str | None = None, temperature: float = 0.0,
+             model: str | None = None) -> str:
     backend = settings.llm_backend.lower()
     if backend == "ollama":
-        return _ollama(prompt, system, temperature)
+        return _ollama(prompt, system, temperature, model)
     if backend == "groq":
-        return _groq(prompt, system, temperature)
+        return _groq(prompt, system, temperature, model)
     if backend == "gemini":
-        return _gemini(prompt, system, temperature)
+        return _gemini(prompt, system, temperature, model)
     raise ValueError(f"Unknown LLM_BACKEND: {backend}")
 
 
-def _ollama(prompt, system, temperature):
+def _ollama(prompt, system, temperature, model=None):
     import ollama
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-    resp = ollama.chat(model=settings.ollama_model, messages=messages,
+    resp = ollama.chat(model=model or settings.ollama_model, messages=messages,
                        options={"temperature": temperature})
     return resp["message"]["content"]
 
 
-def _groq(prompt, system, temperature):
+def _groq(prompt, system, temperature, model=None):
     from groq import Groq
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
     messages = []
@@ -39,14 +40,14 @@ def _groq(prompt, system, temperature):
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     resp = client.chat.completions.create(
-        model=settings.groq_model, messages=messages, temperature=temperature)
+        model=model or settings.groq_model, messages=messages, temperature=temperature)
     return resp.choices[0].message.content
 
 
-def _gemini(prompt, system, temperature):
+def _gemini(prompt, system, temperature, model=None):
     import google.generativeai as genai
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-    model = genai.GenerativeModel(settings.gemini_model,
+    model = genai.GenerativeModel(model or settings.gemini_model,
                                   system_instruction=system or None)
     resp = model.generate_content(
         prompt, generation_config={"temperature": temperature})

@@ -77,13 +77,15 @@ class Retriever:
         return merged
 
     def _rerank(self, query: str, hits: list[Hit], k: int) -> list[Hit]:
+        # Cross-encoder reranker via sentence-transformers (stable across
+        # transformers versions; uses the same BAAI/bge-reranker-base weights).
         if self._reranker is None:
-            from FlagEmbedding import FlagReranker
-            self._reranker = FlagReranker(settings.reranker_model, use_fp16=True)
+            from sentence_transformers import CrossEncoder
+            self._reranker = CrossEncoder(settings.reranker_model)
+        import numpy as np
         pairs = [[query, h.text] for h in hits]
-        scores = self._reranker.compute_score(pairs, normalize=True)
-        if not isinstance(scores, list):
-            scores = [scores]
+        logits = np.asarray(self._reranker.predict(pairs), dtype=float)
+        scores = 1.0 / (1.0 + np.exp(-logits))  # sigmoid -> 0..1 relevance
         for h, s in zip(hits, scores):
             h.score = float(s)
         return sorted(hits, key=lambda h: h.score, reverse=True)[:k]

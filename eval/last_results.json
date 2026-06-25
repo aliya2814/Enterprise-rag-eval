@@ -1,8 +1,16 @@
 {
-  "lightweight": {
+  "retrieval": {
     "n": 8,
-    "hit_rate@k": 0.875,
-    "mrr": 0.812
+    "reranker": true,
+    "hit_rate@k": 0.75,
+    "mrr": 0.625
   },
-  "ragas": null
+  "quality": {
+    "judge_model": "llama-3.3-70b-versatile",
+    "reranker": true,
+    "abstention_rate": 0.25,
+    "faithfulness": 0.871,
+    "context_relevance": 0.762,
+    "answer_relevance": 0.725
+  }
 }
